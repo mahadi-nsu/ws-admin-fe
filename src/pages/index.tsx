@@ -6,7 +6,7 @@ const IndexPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/service-desk');
+    router.push('/accounts');
   }, []);
 
   return null;
