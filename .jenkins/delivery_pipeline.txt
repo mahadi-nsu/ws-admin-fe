@@ -1,0 +1,147 @@
+pipeline {
+    agent any
+
+    environment {
+        RELEASE_PROD_BRANCH_NAME='origin/main'
+        RELEASE_TEST_BRANCH_NAME='origin/dev'
+        APP_NAME='worksober-new-frontend-admin'
+        COMMIT_MESSAGE=getCommitMessage()
+    }
+
+    stages {
+        stage('Build for TEST') {
+          when {
+              allOf {
+                  expression { env.RELEASE_TEST_BRANCH_NAME == env.GIT_BRANCH }
+                  }
+              }
+
+          steps {
+             script {
+              processPath=sh(returnStdout: true, script: "pwd").trim()
+             }
+		    echo "$processPath"
+             echo "Removing package-lock.json and node_modules"
+             sh("rm -rf node_modules package-lock.json")
+			
+			echo "Ready for transfer"
+			sshPublisher(
+                    publishers: [
+                        sshPublisherDesc(
+                            configName: 'test-front-srv2', // Remote server name in Jenkins->Manage Jenkins [Publish over SSH] tab
+                            transfers: [
+                                sshTransfer(
+                                    cleanRemote: true,
+                                    excludes: '',
+                                    execCommand: '',
+                                    execTimeout: 360000,
+                                    flatten: false,
+                                    makeEmptyDirs: false,
+                                    noDefaultExcludes: false,
+                                    patternSeparator: '[, ]+',
+                                    remoteDirectory: "${APP_NAME}",
+                                    remoteDirectorySDF: false,
+                                    removePrefix: '',
+                                    sourceFiles: '**'
+                                )
+
+                            ],
+                            usePromotionTimestamp: false,
+                            useWorkspaceInPromotion: false,
+                            verbose: false
+                        )
+                    ]
+                )
+
+            //sh("ssh jenkins@d-front-srv2 'rm -rfv /home/jenkins/worksober-new-frontend-admin/*'")
+            //sh("scp -r $processPath/* jenkins@d-front-srv2:/home/jenkins/worksober-new-frontend-admin")
+            //sh("ssh jenkins@d-front-srv2 'npm install --prefix /home/jenkins/worksober-new-frontend-admin'")
+			//sh("ssh jenkins@d-front-srv2 'npm install next react react-dom react-redux --prefix /home/jenkins/worksober-new-frontend-admin'")
+            sh("ssh -F /dev/null -o IdentitiesOnly=yes -i /var/lib/jenkins/.ssh/jenkins d-front-srv2 '/home/jenkins/new-front-admin-deploy.sh'")
+            echo "Deployment for TEST is complete"
+          }
+        }
+
+        stage('Build for PROD') {
+          when {
+              allOf {
+                  expression { env.RELEASE_PROD_BRANCH_NAME == env.GIT_BRANCH }
+                  }
+              }
+
+          steps {
+             script {
+              processPath=sh(returnStdout: true, script: "pwd").trim()
+             }
+		    echo "$processPath"
+             echo "Removing package-lock.json and node_modules"
+             sh("rm -rf node_modules package-lock.json")
+			
+			echo "Ready for transfer"
+			sshPublisher(
+                    publishers: [
+                        sshPublisherDesc(
+                            configName: 'prod-front-srv2', // Remote server name in Jenkins->Manage Jenkins [Publish over SSH] tab
+                            transfers: [
+                                sshTransfer(
+                                    cleanRemote: true,
+                                    excludes: '',
+                                    execCommand: '',
+                                    execTimeout: 360000,
+                                    flatten: false,
+                                    makeEmptyDirs: false,
+                                    noDefaultExcludes: false,
+                                    patternSeparator: '[, ]+',
+                                    remoteDirectory: "${APP_NAME}",
+                                    remoteDirectorySDF: false,
+                                    removePrefix: '',
+                                    sourceFiles: '**'
+                                )
+
+                            ],
+                            usePromotionTimestamp: false,
+                            useWorkspaceInPromotion: false,
+                            verbose: false
+                        )
+                    ]
+                )
+
+
+            //sh("ssh jenkins@p-front-srv2 'rm -rfv /home/jenkins/worksober-new-frontend-admin/*'")
+            //sh("scp -r $processPath/* jenkins@p-front-srv2:/home/jenkins/worksober-new-frontend-admin")
+            //sh("ssh jenkins@p-front-srv2 'npm install --prefix /home/jenkins/worksober-new-frontend-admin'")
+            //sh("ssh -F /dev/null -o IdentitiesOnly=yes -i /var/lib/jenkins/.ssh/jenkins p-front-srv2 'npm install next react react-dom react-redux --prefix /home/jenkins/worksober-new-frontend-admin'")
+            sh("ssh -F /dev/null -o IdentitiesOnly=yes -i /var/lib/jenkins/.ssh/jenkins p-front-srv2 '/home/jenkins/new-front-admin-deploy.sh'")
+            echo "Deployment for PROD is complete"
+          }
+        }
+
+    }
+
+    post {
+         always {
+             echo ''
+         }
+
+         success {
+             echo "Pipeline succeeded."
+         }
+
+         failure {
+             echo "Pipeline failure"
+         }
+
+         unstable {
+             echo 'This will run only if the run was marked as unstable'
+         }
+
+         changed {
+             echo ''
+         }
+    }
+}
+
+
+def getCommitMessage() {
+    return sh(returnStdout: true, script: "git log -1").trim()
+}

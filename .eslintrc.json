@@ -1,0 +1,10 @@
+{
+  "extends": ["next/core-web-vitals", "prettier"],
+  "globals": {
+    "React": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "jsx-quotes": "error"
+  }
+}
